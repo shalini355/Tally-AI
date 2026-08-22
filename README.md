@@ -48,6 +48,19 @@ Tally is an autonomous AI finance controller that reconciles 60+ messy ERP and b
 
 ---
 
+### Production Service Flow
+
+For multi-user workloads, Streamlit is a thin client. FastAPI accepts job requests,
+private S3 stores input and output objects, PostgreSQL stores job state and audit
+evidence, Redis carries Celery messages, and workers run reconciliation independently
+of the web process.
+
+```text
+Streamlit -> FastAPI -> private S3 + PostgreSQL
+                 \-> Redis -> Celery worker -> reconciliation -> S3/PostgreSQL
+Streamlit <- GET /v1/reconciliation-jobs/{task_id}
+```
+
 ## 🚀 Quick Start
 
 ### 1. Clone & Install
@@ -135,6 +148,19 @@ Generates a **second dataset** with a different seed, runs the full pipeline, an
 
 Open `http://localhost:8501` to view the interactive dashboard.
 
+### 8. Run the Asynchronous Backend
+
+Install Docker Desktop, then start the local broker and database:
+
+```powershell
+docker compose up -d postgres redis
+.venv\Scripts\python.exe -m uvicorn backend.api:app --reload --port 8000
+.venv\Scripts\celery.exe -A backend.celery_app.celery_app worker --loglevel=INFO --pool=solo
+```
+
+The API returns immediately with a `task_id`. The example client requests presigned
+S3 URLs, uploads files directly to S3, submits their object keys, and polls status.
+
 ---
 
 ## 📊 Benchmark Results
@@ -191,7 +217,7 @@ The deterministic exact category is independently audited at **100.00% precision
 ## 📁 Project Structure
 
 ```
-AI-Finnance-Tracker-Razorpay/
+Tally-AI/
 ├── app.py                          # Streamlit dashboard
 ├── requirements.txt                # Python dependencies
 ├── .env                            # API keys (not committed)
@@ -204,6 +230,9 @@ AI-Finnance-Tracker-Razorpay/
 │   ├── reconcile.py                # Pipeline orchestrator with timing & exception categorization
 │   ├── evaluate_accuracy.py        # Per-category PRF1, throughput, calibration evaluation
 │   └── generalization_test.py      # Anti-cherry-picking second-dataset benchmark
+├── backend/                        # FastAPI, Celery, S3, PostgreSQL service boundary
+├── examples/streamlit_async_client.py # Non-blocking upload and status polling client
+├── docker-compose.yml               # Local PostgreSQL and Redis services
 │
 ├── data/
 │   ├── erp_ledger.csv              # Generated ERP records
@@ -308,6 +337,33 @@ with a provider-specific concurrency limit, retries, exponential backoff, and
 dead-letter handling. FAISS or Chroma should be added only after measuring whether
 canonical normalization and deterministic candidate filtering leave enough semantic
 search work to justify the operational cost.
+
+### Production API and Worker
+
+The backend templates use this flow:
+
+```text
+Streamlit -> POST /v1/reconciliation-jobs -> FastAPI -> S3 + PostgreSQL
+                                      -> Redis broker -> Celery worker
+Celery worker -> S3 download -> reconciliation -> S3 reports + PostgreSQL audit
+Streamlit <- GET /v1/reconciliation-jobs/{job_id} <- FastAPI
+```
+
+Start local infrastructure:
+
+```powershell
+docker compose up -d postgres redis
+.venv\Scripts\python.exe -m uvicorn backend.api:app --reload --port 8000
+.venv\Scripts\celery.exe -A backend.celery_app.celery_app worker --loglevel=INFO --pool=solo
+```
+
+The API returns `202 Accepted` with a job ID and never waits for reconciliation.
+The worker uses late acknowledgements, bounded Celery retries with jitter, a Redis
+job lock, a unique `(job_id, transaction_hash)` audit key, and a `failed_jobs`
+record after terminal failure. In production, use Alembic migrations instead of
+`create_all`, private S3 buckets with IAM roles and encryption, authentication,
+upload validation, and an outbox or transactional publisher between database and
+queue submission.
 
 ---
 
