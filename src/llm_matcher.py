@@ -47,7 +47,8 @@ Use business logic, not just literal string equality:
 - A total amount difference smaller than ₹1.00 can be a rounding discrepancy, but
   only classify it that way when the merchant identity and transaction context support
   the match. Do not invent a match solely because the amount is close.
-- Consider the ERP amount, tax line item, bank net amount, and fee deducted together.
+- Compare the supplied financial fields as evidence, but never calculate totals,
+  taxes, fees, conversions, or rounding. Python performs all numerical math.
 - Return no_match when identity or financial evidence is insufficient.
 - Be conservative: confidence must reflect the evidence, and uncertain candidates
   should have is_match=false.
@@ -115,7 +116,8 @@ def evaluate_potential_match(
 
     Pass an Instructor-compatible ``client`` in tests to avoid network calls. When no
     client is supplied, the selected provider key is read lazily from ``.env``.
-    Automatically falls back to Groq if Gemini hits 429 rate limits.
+    Automatically falls back to the other configured provider after a provider
+    failure, including rate limits, and retries with bounded exponential backoff.
     """
     default_models = {
         "gemini": "gemini-3.6-flash",
@@ -132,7 +134,10 @@ def evaluate_potential_match(
         f"Bank row:\n{json.dumps(bank_data, indent=2, ensure_ascii=False)}"
     )
 
-    max_attempts = 4
+    if max_retries < 1:
+        raise ValueError("max_retries must be at least 1")
+
+    max_attempts = max_retries
     fallback_used = False
     for attempt in range(1, max_attempts + 1):
         try:
@@ -148,16 +153,15 @@ def evaluate_potential_match(
                 ],
             )
         except Exception as exc:
-            if _is_rate_limit_error(exc):
-                fallback_provider = "gemini" if selected_provider == "groq" else "groq"
-                if client is None and not fallback_used and _get_api_key(fallback_provider):
-                    selected_provider = fallback_provider
-                    selected_model = default_models[selected_provider]
-                    fallback_used = True
-                    continue
-                if attempt < max_attempts:
-                    time.sleep(2.5 * attempt)
-                    continue
+            fallback_provider = "gemini" if selected_provider == "groq" else "groq"
+            if client is None and not fallback_used and _get_api_key(fallback_provider):
+                selected_provider = fallback_provider
+                selected_model = model or default_models[selected_provider]
+                fallback_used = True
+                continue
+            if attempt < max_attempts:
+                time.sleep(min(8.0, 0.5 * (2 ** (attempt - 1))))
+                continue
             if attempt == max_attempts:
                 if _is_rate_limit_error(exc):
                     raise RuntimeError(

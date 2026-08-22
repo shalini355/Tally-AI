@@ -289,7 +289,9 @@ The deterministic first pass resolves ~36% of records in under 50ms with zero AP
 A single accuracy number hides where the model excels and where it struggles. Category-level PRF1 reveals that the LLM is excellent at rounding-discrepancy detection (F1 > 93) but weaker on fuzzy-name matching (F1 ~74), guiding targeted improvements.
 
 ### Why Categorized Exceptions?
-Lumping all failures as "unresolved" tells an accountant nothing. Tagging each with `no_counterpart_found`, `below_confidence_threshold`, `ambiguous_multiple_candidates`, or `amount_currency_mismatch` enables targeted human review.
+Lumping all failures as "unresolved" tells an accountant nothing. Tagging each with
+`no_counterpart_found`, `below_confidence_threshold`, or `amount_currency_mismatch`
+enables targeted human review.
 
 ### Why a Generalization Test?
 One cherry-picked match proves nothing. Running the same pipeline on a freshly seeded second dataset (with different random amounts, shuffled records, and independent noise) proves the model generalizes — both datasets achieve F1 > 98.
@@ -358,6 +360,44 @@ docker compose up -d postgres redis
 ```
 
 The API returns `202 Accepted` with a job ID and never waits for reconciliation.
+
+## Local Verification Without API Keys
+
+Use the project interpreter from PowerShell. These checks exercise data generation,
+the deterministic stage, artifact creation, and evaluation without making LLM calls:
+
+```powershell
+.venv\Scripts\python.exe -m compileall -q src backend app.py
+.venv\Scripts\python.exe src\generate_data.py
+.venv\Scripts\python.exe -c "from pathlib import Path; from src.deterministic_filter import DeterministicMatcher; m=DeterministicMatcher(Path('data/erp_ledger.csv'), Path('data/bank_statement.csv')); print(f'Deterministic matches: {len(m.run_first_pass())}')"
+.venv\Scripts\python.exe src\evaluate_accuracy.py --skip-reconcile
+```
+
+The full reconciliation command requires `GEMINI_API_KEY` or `GROQ_API_KEY`:
+
+```powershell
+.venv\Scripts\python.exe src\reconcile.py --provider groq
+```
+
+To start the dashboard locally:
+
+```powershell
+.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+To start the optional service stack, ensure Docker Desktop is running first:
+
+```powershell
+docker compose config
+docker compose up -d postgres redis
+.venv\Scripts\python.exe -m uvicorn backend.api:app --reload --port 8000
+```
+
+Run the Celery worker in a second PowerShell window:
+
+```powershell
+.venv\Scripts\celery.exe -A backend.celery_app.celery_app worker --loglevel=INFO --pool=solo
+```
 The worker uses late acknowledgements, bounded Celery retries with jitter, a Redis
 job lock, a unique `(job_id, transaction_hash)` audit key, and a `failed_jobs`
 record after terminal failure. In production, use Alembic migrations instead of

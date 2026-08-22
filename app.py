@@ -6,6 +6,7 @@ import json
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 import altair as alt
 import pandas as pd

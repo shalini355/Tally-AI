@@ -124,8 +124,10 @@ def reconcile(
     evaluator: Callable[..., MatchDecision] = evaluate_potential_match,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Reconcile inputs and write matched and exception CSV reports with timing breakdown."""
-    if not 0.0 <= confidence_threshold <= 1.0:
-        raise ValueError("confidence_threshold must be between 0.0 and 1.0")
+    if confidence_threshold != DEFAULT_CONFIDENCE_THRESHOLD:
+        raise ValueError(
+            f"confidence_threshold is fixed at {DEFAULT_CONFIDENCE_THRESHOLD:.2f}"
+        )
     if max_candidates_per_erp < 1:
         raise ValueError("max_candidates_per_erp must be at least 1")
     if llm_workers < 1:
@@ -264,20 +266,13 @@ def reconcile(
                 category = "no_counterpart_found"
                 reason = "No candidate bank settlement found in candidate search pool."
             else:
-                high_conf_candidates = [
-                    e for e in eval_history if e["confidence_score"] >= 0.5
-                ]
-                if len(high_conf_candidates) > 1:
-                    category = "ambiguous_multiple_candidates"
-                    reason = f"Multiple candidate bank records had ambiguous confidence scores (count={len(high_conf_candidates)})."
+                top_conf = max(e["confidence_score"] for e in eval_history)
+                if top_conf < confidence_threshold:
+                    category = "below_confidence_threshold"
+                    reason = f"Highest LLM confidence score ({top_conf:.2f}) was below threshold ({confidence_threshold})."
                 else:
-                    top_conf = max(e["confidence_score"] for e in eval_history)
-                    if top_conf < confidence_threshold:
-                        category = "below_confidence_threshold"
-                        reason = f"Highest LLM confidence score ({top_conf:.2f}) was below threshold ({confidence_threshold})."
-                    else:
-                        category = "no_counterpart_found"
-                        reason = "No matching bank settlement record satisfied business constraints."
+                    category = "no_counterpart_found"
+                    reason = "No matching bank settlement record satisfied business constraints."
 
             exceptions.append(
                 {
@@ -306,8 +301,8 @@ def reconcile(
                     category = "below_confidence_threshold"
                     reason = f"Evaluated candidate confidence ({top_conf:.2f}) was below threshold ({confidence_threshold})."
                 else:
-                    category = "ambiguous_multiple_candidates"
-                    reason = "Bank record had ambiguous candidate matches in ERP ledger."
+                    category = "no_counterpart_found"
+                    reason = "Candidate evaluations did not produce an accepted ERP match."
 
             exceptions.append(
                 {

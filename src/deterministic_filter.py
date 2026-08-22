@@ -71,17 +71,15 @@ class DeterministicMatcher:
 
         bank_indexed = self.bank.copy()
         erp_ids = self.erp["erp_id"].dropna().drop_duplicates().tolist()
+        id_pattern = re.compile(
+            rf"(?<![A-Za-z0-9_-])({'|'.join(re.escape(erp_id) for erp_id in erp_ids)})"
+            rf"(?![A-Za-z0-9_-])",
+            flags=re.IGNORECASE,
+        )
 
         def extract_unambiguous_id(description: str) -> str | None:
-            candidates = [
-                erp_id
-                for erp_id in erp_ids
-                if re.search(
-                    rf"(?<![A-Za-z0-9_-]){re.escape(erp_id)}(?![A-Za-z0-9_-])",
-                    description,
-                )
-            ]
-            return candidates[0] if len(candidates) == 1 else None
+            candidates = {match.group(1).upper(): match.group(1) for match in id_pattern.finditer(description)}
+            return next(iter(candidates.values())) if len(candidates) == 1 else None
 
         bank_indexed["_erp_id"] = bank_indexed["description"].map(
             extract_unambiguous_id
