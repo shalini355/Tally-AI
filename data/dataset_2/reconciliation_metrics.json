@@ -1,0 +1,19 @@
+{
+  "total_erp_records": 60,
+  "total_bank_records": 60,
+  "total_matched_pairs": 52,
+  "deterministic_matches_count": 18,
+  "deterministic_match_percent": 34.62,
+  "deterministic_time_seconds": 0.0675,
+  "llm_matches_count": 34,
+  "llm_match_percent": 65.38,
+  "llm_time_seconds": 158.2087,
+  "llm_calls_made": 39,
+  "total_time_seconds": 158.2814,
+  "unresolved_exceptions_count": 16,
+  "categorized_exceptions": {
+    "below_confidence_threshold": 8,
+    "no_counterpart_found": 6,
+    "amount_currency_mismatch": 2
+  }
+}

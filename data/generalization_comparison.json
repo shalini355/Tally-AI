@@ -1,0 +1,182 @@
+{
+  "dataset_1_primary": {
+    "overall": {
+      "precision": 100.0,
+      "recall": 96.15,
+      "f1": 98.04,
+      "tp": 50,
+      "fp": 0,
+      "fn": 2,
+      "accuracy": 96.15
+    },
+    "category_metrics": {
+      "exact": {
+        "precision": 72.0,
+        "recall": 100.0,
+        "f1": 83.72,
+        "tp": 18,
+        "fp": 7,
+        "fn": 0
+      },
+      "fuzzy_name_match": {
+        "precision": 100.0,
+        "recall": 58.82,
+        "f1": 74.07,
+        "tp": 10,
+        "fp": 0,
+        "fn": 7
+      },
+      "rounding_discrepancy": {
+        "precision": 100.0,
+        "recall": 88.24,
+        "f1": 93.75,
+        "tp": 15,
+        "fp": 0,
+        "fn": 2
+      },
+      "true_exception": {
+        "precision": 80.0,
+        "recall": 100.0,
+        "f1": 88.89,
+        "tp": 16,
+        "fp": 4,
+        "fn": 0
+      }
+    },
+    "throughput_breakdown": {
+      "total_erp_records": 60,
+      "total_bank_records": 60,
+      "total_matched_pairs": 50,
+      "deterministic_matches_count": 18,
+      "deterministic_match_percent": 36.0,
+      "deterministic_time_seconds": 0.0488,
+      "llm_matches_count": 32,
+      "llm_match_percent": 64.0,
+      "llm_time_seconds": 162.9791,
+      "llm_calls_made": 40,
+      "total_time_seconds": 163.0342,
+      "unresolved_exceptions_count": 20,
+      "categorized_exceptions": {
+        "below_confidence_threshold": 12,
+        "no_counterpart_found": 6,
+        "amount_currency_mismatch": 2
+      }
+    },
+    "categorized_exceptions": {
+      "below_confidence_threshold": 12,
+      "no_counterpart_found": 6,
+      "amount_currency_mismatch": 2
+    },
+    "confidence_calibration": {
+      "0.0-0.5": {
+        "total": 8,
+        "correct": 6,
+        "incorrect": 2,
+        "accuracy": 75.0
+      },
+      "0.5-0.8": {
+        "total": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": 0.0
+      },
+      "0.8-1.0": {
+        "total": 32,
+        "correct": 32,
+        "incorrect": 0,
+        "accuracy": 100.0
+      }
+    },
+    "audit_trail_ok": true
+  },
+  "dataset_2_generalization": {
+    "overall": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1": 100.0,
+      "tp": 52,
+      "fp": 0,
+      "fn": 0,
+      "accuracy": 100.0
+    },
+    "category_metrics": {
+      "exact": {
+        "precision": 75.0,
+        "recall": 100.0,
+        "f1": 85.71,
+        "tp": 18,
+        "fp": 6,
+        "fn": 0
+      },
+      "fuzzy_name_match": {
+        "precision": 91.67,
+        "recall": 64.71,
+        "f1": 75.86,
+        "tp": 11,
+        "fp": 1,
+        "fn": 6
+      },
+      "rounding_discrepancy": {
+        "precision": 100.0,
+        "recall": 94.12,
+        "f1": 96.97,
+        "tp": 16,
+        "fp": 0,
+        "fn": 1
+      },
+      "true_exception": {
+        "precision": 100.0,
+        "recall": 100.0,
+        "f1": 100.0,
+        "tp": 16,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "throughput_breakdown": {
+      "total_erp_records": 60,
+      "total_bank_records": 60,
+      "total_matched_pairs": 52,
+      "deterministic_matches_count": 18,
+      "deterministic_match_percent": 34.62,
+      "deterministic_time_seconds": 0.0675,
+      "llm_matches_count": 34,
+      "llm_match_percent": 65.38,
+      "llm_time_seconds": 158.2087,
+      "llm_calls_made": 39,
+      "total_time_seconds": 158.2814,
+      "unresolved_exceptions_count": 16,
+      "categorized_exceptions": {
+        "below_confidence_threshold": 8,
+        "no_counterpart_found": 6,
+        "amount_currency_mismatch": 2
+      }
+    },
+    "categorized_exceptions": {
+      "below_confidence_threshold": 8,
+      "no_counterpart_found": 6,
+      "amount_currency_mismatch": 2
+    },
+    "confidence_calibration": {
+      "0.0-0.5": {
+        "total": 5,
+        "correct": 5,
+        "incorrect": 0,
+        "accuracy": 100.0
+      },
+      "0.5-0.8": {
+        "total": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": 0.0
+      },
+      "0.8-1.0": {
+        "total": 34,
+        "correct": 34,
+        "incorrect": 0,
+        "accuracy": 100.0
+      }
+    },
+    "audit_trail_ok": true
+  }
+}

@@ -1,0 +1,344 @@
+{
+  "seed": 20260822,
+  "record_counts": {
+    "erp": 60,
+    "bank": 60,
+    "matched_pairs": 52
+  },
+  "matches": [
+    {
+      "erp_id": "ERP-0001",
+      "bank_ref": "BNK-00001",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0002",
+      "bank_ref": "BNK-00002",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 1.94
+    },
+    {
+      "erp_id": "ERP-0003",
+      "bank_ref": "BNK-00003",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 1.83
+    },
+    {
+      "erp_id": "ERP-0004",
+      "bank_ref": "BNK-00004",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0005",
+      "bank_ref": "BNK-00005",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 12.78
+    },
+    {
+      "erp_id": "ERP-0006",
+      "bank_ref": "BNK-00006",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 9.31
+    },
+    {
+      "erp_id": "ERP-0007",
+      "bank_ref": "BNK-00007",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0008",
+      "bank_ref": "BNK-00008",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 2.51
+    },
+    {
+      "erp_id": "ERP-0009",
+      "bank_ref": "BNK-00009",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 0.17
+    },
+    {
+      "erp_id": "ERP-0010",
+      "bank_ref": "BNK-00010",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0011",
+      "bank_ref": "BNK-00011",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 5.77
+    },
+    {
+      "erp_id": "ERP-0012",
+      "bank_ref": "BNK-00012",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 8.41
+    },
+    {
+      "erp_id": "ERP-0013",
+      "bank_ref": "BNK-00013",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0014",
+      "bank_ref": "BNK-00014",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 3.95
+    },
+    {
+      "erp_id": "ERP-0015",
+      "bank_ref": "BNK-00015",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 1.09
+    },
+    {
+      "erp_id": "ERP-0016",
+      "bank_ref": "BNK-00016",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0017",
+      "bank_ref": "BNK-00017",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 8.49
+    },
+    {
+      "erp_id": "ERP-0018",
+      "bank_ref": "BNK-00018",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 8.61
+    },
+    {
+      "erp_id": "ERP-0019",
+      "bank_ref": "BNK-00019",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0020",
+      "bank_ref": "BNK-00020",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 10.14
+    },
+    {
+      "erp_id": "ERP-0021",
+      "bank_ref": "BNK-00021",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 0.42
+    },
+    {
+      "erp_id": "ERP-0022",
+      "bank_ref": "BNK-00022",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0023",
+      "bank_ref": "BNK-00023",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 15.19
+    },
+    {
+      "erp_id": "ERP-0024",
+      "bank_ref": "BNK-00024",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 10.87
+    },
+    {
+      "erp_id": "ERP-0025",
+      "bank_ref": "BNK-00025",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0026",
+      "bank_ref": "BNK-00026",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 10.74
+    },
+    {
+      "erp_id": "ERP-0027",
+      "bank_ref": "BNK-00027",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 0.72
+    },
+    {
+      "erp_id": "ERP-0028",
+      "bank_ref": "BNK-00028",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0029",
+      "bank_ref": "BNK-00029",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 2.24
+    },
+    {
+      "erp_id": "ERP-0030",
+      "bank_ref": "BNK-00030",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 9.04
+    },
+    {
+      "erp_id": "ERP-0031",
+      "bank_ref": "BNK-00031",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0032",
+      "bank_ref": "BNK-00032",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 1.87
+    },
+    {
+      "erp_id": "ERP-0033",
+      "bank_ref": "BNK-00033",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 3.45
+    },
+    {
+      "erp_id": "ERP-0034",
+      "bank_ref": "BNK-00034",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0035",
+      "bank_ref": "BNK-00035",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 8.57
+    },
+    {
+      "erp_id": "ERP-0036",
+      "bank_ref": "BNK-00036",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 10.66
+    },
+    {
+      "erp_id": "ERP-0037",
+      "bank_ref": "BNK-00037",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0038",
+      "bank_ref": "BNK-00038",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 6.48
+    },
+    {
+      "erp_id": "ERP-0039",
+      "bank_ref": "BNK-00039",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 0.53
+    },
+    {
+      "erp_id": "ERP-0040",
+      "bank_ref": "BNK-00040",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0041",
+      "bank_ref": "BNK-00041",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 5.54
+    },
+    {
+      "erp_id": "ERP-0042",
+      "bank_ref": "BNK-00042",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 8.31
+    },
+    {
+      "erp_id": "ERP-0043",
+      "bank_ref": "BNK-00043",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0044",
+      "bank_ref": "BNK-00044",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 2.94
+    },
+    {
+      "erp_id": "ERP-0045",
+      "bank_ref": "BNK-00045",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 8.49
+    },
+    {
+      "erp_id": "ERP-0046",
+      "bank_ref": "BNK-00046",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0047",
+      "bank_ref": "BNK-00047",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 6.06
+    },
+    {
+      "erp_id": "ERP-0048",
+      "bank_ref": "BNK-00048",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 11.06
+    },
+    {
+      "erp_id": "ERP-0049",
+      "bank_ref": "BNK-00049",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    },
+    {
+      "erp_id": "ERP-0050",
+      "bank_ref": "BNK-00050",
+      "match_type": "fuzzy_name",
+      "expected_fee_deducted": 14.22
+    },
+    {
+      "erp_id": "ERP-0051",
+      "bank_ref": "BNK-00051",
+      "match_type": "rounding_difference",
+      "expected_fee_deducted": 7.17
+    },
+    {
+      "erp_id": "ERP-0052",
+      "bank_ref": "BNK-00052",
+      "match_type": "exact",
+      "expected_fee_deducted": 0.0
+    }
+  ],
+  "exceptions": {
+    "erp_only": [
+      "ERP-0053",
+      "ERP-0054",
+      "ERP-0055",
+      "ERP-0056",
+      "ERP-0057",
+      "ERP-0058",
+      "ERP-0059",
+      "ERP-0060"
+    ],
+    "bank_only": [
+      "BNK-UNMATCHED-001",
+      "BNK-UNMATCHED-002",
+      "BNK-UNMATCHED-003",
+      "BNK-UNMATCHED-004",
+      "BNK-UNMATCHED-005",
+      "BNK-UNMATCHED-006",
+      "BNK-UNMATCHED-007",
+      "BNK-UNMATCHED-008"
+    ]
+  }
+}
