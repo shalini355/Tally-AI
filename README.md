@@ -361,6 +361,27 @@ docker compose up -d postgres redis
 
 The API returns `202 Accepted` with a job ID and never waits for reconciliation.
 
+Build and run the API image locally:
+
+```powershell
+docker build -t tally-ai-api:local .
+docker run --rm -p 8000:8000 --env-file .env tally-ai-api:local
+```
+
+For a real production deployment, provide PostgreSQL, Redis, S3, and LLM
+credentials through the platform secret manager. Put the API behind TLS and an
+authenticated gateway, run schema migrations before release, and run the Celery
+worker as a separate process using the same image:
+
+```powershell
+docker run --rm --env-file .env tally-ai-api:local celery -A backend.celery_app.celery_app worker --loglevel=INFO --pool=solo
+```
+
+The included Compose file is a local infrastructure stack, not a complete
+production deployment. It intentionally does not publish PostgreSQL or Redis to
+the public internet and does not replace authentication, migrations, monitoring,
+or managed secret storage.
+
 ## Local Verification Without API Keys
 
 Use the project interpreter from PowerShell. These checks exercise data generation,

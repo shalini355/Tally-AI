@@ -1,8 +1,11 @@
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import UUID, uuid4
 
+import redis
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -22,11 +25,19 @@ class JobKeys(BaseModel):
 
 @app.on_event("startup")
 def create_tables() -> None:
+    """Create local-development tables; production must use migrations."""
     Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Report API health without hiding dependency failures."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        redis.Redis.from_url(get_settings().redis_url).ping()
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="A required dependency is unavailable") from error
     return {"status": "ok"}
 
 
@@ -71,13 +82,17 @@ async def create_job(
     job_id = uuid4()
     prefix = f"jobs/{job_id}/"
     storage = ObjectStorage()
-    with __import__("tempfile").TemporaryDirectory() as directory:
+    with TemporaryDirectory() as directory:
         erp_path = Path(directory) / erp_file.filename
         bank_path = Path(directory) / bank_file.filename
-        erp_path.write_bytes(await erp_file.read())
-        bank_path.write_bytes(await bank_file.read())
-        if erp_path.stat().st_size > settings.max_upload_bytes or bank_path.stat().st_size > settings.max_upload_bytes:
-            raise HTTPException(status_code=413, detail="File exceeds upload size limit")
+        for upload, destination in ((erp_file, erp_path), (bank_file, bank_path)):
+            size = 0
+            with destination.open("wb") as output:
+                while chunk := await upload.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > settings.max_upload_bytes:
+                        raise HTTPException(status_code=413, detail="File exceeds upload size limit")
+                    output.write(chunk)
         storage.upload(erp_path, prefix + erp_file.filename)
         storage.upload(bank_path, prefix + bank_file.filename)
 

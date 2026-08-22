@@ -1,0 +1,10 @@
+.git
+.venv
+__pycache__
+*.pyc
+.env
+.streamlit
+.gitignore
+data
+examples
+README.md
