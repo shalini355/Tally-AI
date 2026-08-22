@@ -97,6 +97,11 @@ def _create_client(provider: str, model: str | None = None) -> Any:
     raise ValueError("provider must be either 'gemini' or 'groq'")
 
 
+def _is_rate_limit_error(error: Exception) -> bool:
+    error_text = str(error).lower()
+    return "429" in error_text or "rate_limit" in error_text or "quota" in error_text
+
+
 def evaluate_potential_match(
     erp_row: Mapping[str, Any] | Any,
     bank_row: Mapping[str, Any] | Any,
@@ -128,6 +133,7 @@ def evaluate_potential_match(
     )
 
     max_attempts = 4
+    fallback_used = False
     for attempt in range(1, max_attempts + 1):
         try:
             active_client = client if client is not None else _create_client(selected_provider, selected_model)
@@ -142,15 +148,23 @@ def evaluate_potential_match(
                 ],
             )
         except Exception as exc:
-            exc_str = str(exc)
-            if "429" in exc_str or "rate_limit" in exc_str.lower() or "Quota" in exc_str:
-                if selected_provider == "gemini" and client is None and _get_api_key("groq"):
-                    selected_provider = "groq"
-                    selected_model = "openai/gpt-oss-20b"
+            if _is_rate_limit_error(exc):
+                fallback_provider = "gemini" if selected_provider == "groq" else "groq"
+                if client is None and not fallback_used and _get_api_key(fallback_provider):
+                    selected_provider = fallback_provider
+                    selected_model = default_models[selected_provider]
+                    fallback_used = True
+                    continue
                 if attempt < max_attempts:
                     time.sleep(2.5 * attempt)
                     continue
             if attempt == max_attempts:
+                if _is_rate_limit_error(exc):
+                    raise RuntimeError(
+                        f"{selected_provider.upper()} rate limit reached. "
+                        "Add the other provider key in Streamlit Secrets, wait for the quota reset, "
+                        "or use a provider with available quota."
+                    ) from exc
                 raise exc
     raise RuntimeError("Failed to evaluate potential match after retries")
 

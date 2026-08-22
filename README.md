@@ -87,6 +87,10 @@ GROQ_API_KEY = "your_groq_api_key_here"
 
 Streamlit Cloud does not upload or read your local `.env` file.
 
+The dashboard defaults to Groq and automatically tries Gemini once if Groq returns
+a rate-limit response and `GEMINI_API_KEY` is configured. If both providers are
+exhausted, wait for the provider quota reset or use a higher-quota account.
+
 ### 3. Generate Synthetic Data
 
 ```bash
