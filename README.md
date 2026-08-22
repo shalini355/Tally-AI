@@ -53,14 +53,20 @@ Tally is an autonomous AI finance controller that reconciles 60+ messy ERP and b
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
-cd AI-Finnance-Tracker-Razorpay
+git clone https://github.com/shalini355/Tally-AI.git
+cd Tally-AI
 
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS/Linux
 
 python -m pip install -r requirements.txt
+```
+
+For Windows PowerShell, use the project virtual environment for all commands:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ### 2. Configure API Keys
