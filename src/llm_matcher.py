@@ -55,6 +55,21 @@ Use business logic, not just literal string equality:
 Return only the structured decision required by the response schema."""
 
 
+def _get_api_key(provider: str) -> str | None:
+    """Read credentials from local environment variables or Streamlit secrets."""
+    key_name = f"{provider.upper()}_API_KEY"
+    api_key = os.environ.get(key_name)
+    if api_key:
+        return api_key
+
+    try:
+        import streamlit as st
+
+        return st.secrets.get(key_name)
+    except (ImportError, FileNotFoundError, KeyError):
+        return None
+
+
 def _json_safe_row(row: Mapping[str, Any] | Any) -> dict[str, Any]:
     """Convert dictionaries, Pandas rows, and scalar values into JSON-safe data."""
     values = row.to_dict() if hasattr(row, "to_dict") else dict(row)
@@ -69,11 +84,10 @@ def _create_client(provider: str, model: str | None = None) -> Any:
         from openai import OpenAI
 
         if provider == "gemini":
-            api_key = os.environ.get("GEMINI_API_KEY")
             base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
         else:
-            api_key = os.environ.get("GROQ_API_KEY")
             base_url = "https://api.groq.com/openai/v1"
+        api_key = _get_api_key(provider)
         if not api_key:
             raise RuntimeError(f"{provider.upper()}_API_KEY is not set")
         return instructor.from_openai(
@@ -130,7 +144,7 @@ def evaluate_potential_match(
         except Exception as exc:
             exc_str = str(exc)
             if "429" in exc_str or "rate_limit" in exc_str.lower() or "Quota" in exc_str:
-                if selected_provider == "gemini" and client is None and os.environ.get("GROQ_API_KEY"):
+                if selected_provider == "gemini" and client is None and _get_api_key("groq"):
                     selected_provider = "groq"
                     selected_model = "openai/gpt-oss-20b"
                 if attempt < max_attempts:

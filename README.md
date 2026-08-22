@@ -72,6 +72,15 @@ GEMINI_API_KEY=your_gemini_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
+For Streamlit Community Cloud, add the same keys in **App settings → Secrets**:
+
+```toml
+GEMINI_API_KEY = "your_gemini_api_key_here"
+GROQ_API_KEY = "your_groq_api_key_here"
+```
+
+Streamlit Cloud does not upload or read your local `.env` file.
+
 ### 3. Generate Synthetic Data
 
 ```bash
@@ -261,6 +270,34 @@ The 0.80 threshold isn't arbitrary. Bucketing LLM decisions by confidence and me
 | Data Processing | Pandas |
 | Dashboard | Streamlit + Altair |
 | API Client | OpenAI-compatible SDK |
+
+## ⚙️ Performance Architecture
+
+The LLM stage evaluates candidate pairs through `src/parallel_matcher.py`. It uses
+`asyncio` to coordinate a bounded `ThreadPoolExecutor`, which is appropriate for
+the current blocking OpenAI-compatible client. Results are collected before matches
+are committed, so one bank settlement cannot be assigned to multiple ERP records.
+
+Tune concurrency from the command line:
+
+```bash
+.venv\Scripts\python.exe src\reconcile.py --provider groq --llm-workers 8
+```
+
+The worker count should remain below the provider's request-per-minute and token
+limits. Parallelism reduces wall-clock latency, but a sub-10-second target for 50+
+records must be benchmarked against the selected model, prompt size, network, and
+provider quota; it cannot be guaranteed by local concurrency alone.
+
+For production deployment, keep Streamlit as the upload and status client and move
+`reconcile()` behind a FastAPI service. Store uploaded files in object storage,
+enqueue a job ID through Redis and Celery or an equivalent queue, and persist job
+status, reports, stage timings, token usage, cost, confidence calibration, and
+reasoning traces in a database. Workers can call `evaluate_candidates_parallel()`
+with a provider-specific concurrency limit, retries, exponential backoff, and
+dead-letter handling. FAISS or Chroma should be added only after measuring whether
+canonical normalization and deterministic candidate filtering leave enough semantic
+search work to justify the operational cost.
 
 ---
 

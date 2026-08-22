@@ -14,13 +14,16 @@ import pandas as pd
 try:
     from .deterministic_filter import DeterministicMatcher
     from .llm_matcher import MatchDecision, MatchType, evaluate_potential_match
+    from .parallel_matcher import CandidatePair, evaluate_candidates_parallel
 except ImportError:
     from deterministic_filter import DeterministicMatcher
     from llm_matcher import MatchDecision, MatchType, evaluate_potential_match
+    from parallel_matcher import CandidatePair, evaluate_candidates_parallel
 
 
 DEFAULT_CONFIDENCE_THRESHOLD = 0.80
 DEFAULT_MAX_CANDIDATES = 2
+DEFAULT_LLM_WORKERS = 8
 
 
 def _tokens(value: Any) -> set[str]:
@@ -117,6 +120,7 @@ def reconcile(
     model: str | None = None,
     confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
     max_candidates_per_erp: int = DEFAULT_MAX_CANDIDATES,
+    llm_workers: int = DEFAULT_LLM_WORKERS,
     evaluator: Callable[..., MatchDecision] = evaluate_potential_match,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Reconcile inputs and write matched and exception CSV reports with timing breakdown."""
@@ -124,6 +128,8 @@ def reconcile(
         raise ValueError("confidence_threshold must be between 0.0 and 1.0")
     if max_candidates_per_erp < 1:
         raise ValueError("max_candidates_per_erp must be at least 1")
+    if llm_workers < 1:
+        raise ValueError("llm_workers must be at least 1")
 
     pipeline_start = time.perf_counter()
 
@@ -165,63 +171,77 @@ def reconcile(
     # Map candidate evaluation history per unresolved erp_id
     erp_eval_history: dict[str, list[dict[str, Any]]] = {}
 
+    candidate_pairs: list[CandidatePair] = []
     for _, erp_series in unresolved_erp.iterrows():
         erp_row = erp_series.to_dict()
         erp_id = str(erp_row["erp_id"])
-        if erp_id in matched_erp_ids:
-            continue
-
         erp_eval_history[erp_id] = []
         available_bank = unresolved_bank[
             ~unresolved_bank["bank_ref"].astype(str).isin(matched_bank_refs)
         ]
         candidates = _rank_candidates(erp_row, available_bank, max_candidates_per_erp)
 
-        for bank_row in candidates:
-            bank_ref = str(bank_row["bank_ref"])
-            if bank_ref in matched_bank_refs:
-                continue
-
-            llm_calls_made += 1
-            decision = evaluator(
-                erp_row,
-                bank_row,
-                provider=provider,
-                model=model,
+        candidate_pairs.extend(
+            CandidatePair(
+                erp_id=erp_id,
+                bank_ref=str(bank_row["bank_ref"]),
+                erp_row=erp_row,
+                bank_row=bank_row,
             )
+            for bank_row in candidates
+        )
 
-            eval_record = {
-                "erp_id": erp_id,
-                "bank_ref": bank_ref,
-                "is_match": decision.is_match,
-                "confidence_score": decision.confidence_score,
-                "match_type": decision.match_type.value,
-                "reasoning": decision.reasoning,
-                "merchant_erp": erp_row.get("merchant_name", ""),
-                "description_bank": bank_row.get("description", ""),
-                "currency": erp_row.get("currency", ""),
-            }
-            llm_evaluations_log.append(eval_record)
-            erp_eval_history[erp_id].append(eval_record)
+    llm_calls_made = len(candidate_pairs)
+    evaluations = evaluate_candidates_parallel(
+        candidate_pairs,
+        evaluator,
+        provider=provider,
+        model=model,
+        max_workers=llm_workers,
+    )
 
-            if (
-                decision.is_match
-                and decision.match_type is not MatchType.NO_MATCH
-                and decision.confidence_score >= confidence_threshold
-            ):
-                matched_erp_ids.add(erp_id)
-                matched_bank_refs.add(bank_ref)
-                matched_rows.append(
-                    _matched_output_row(
-                        erp_row,
-                        bank_row,
-                        decision.match_type.value,
-                        decision.confidence_score,
-                        decision.reasoning,
-                        "llm",
-                    )
+    for evaluation in evaluations:
+        candidate = evaluation.candidate
+        erp_row = candidate.erp_row
+        bank_row = candidate.bank_row
+        erp_id = candidate.erp_id
+        bank_ref = candidate.bank_ref
+        decision = evaluation.decision
+
+        if erp_id in matched_erp_ids or bank_ref in matched_bank_refs:
+            continue
+
+        eval_record = {
+            "erp_id": erp_id,
+            "bank_ref": bank_ref,
+            "is_match": decision.is_match,
+            "confidence_score": decision.confidence_score,
+            "match_type": decision.match_type.value,
+            "reasoning": decision.reasoning,
+            "merchant_erp": erp_row.get("merchant_name", ""),
+            "description_bank": bank_row.get("description", ""),
+            "currency": erp_row.get("currency", ""),
+        }
+        llm_evaluations_log.append(eval_record)
+        erp_eval_history[erp_id].append(eval_record)
+
+        if (
+            decision.is_match
+            and decision.match_type is not MatchType.NO_MATCH
+            and decision.confidence_score >= confidence_threshold
+        ):
+            matched_erp_ids.add(erp_id)
+            matched_bank_refs.add(bank_ref)
+            matched_rows.append(
+                _matched_output_row(
+                    erp_row,
+                    bank_row,
+                    decision.match_type.value,
+                    decision.confidence_score,
+                    decision.reasoning,
+                    "llm",
                 )
-                break
+            )
 
     llm_time = time.perf_counter() - llm_start
     llm_count = len(matched_rows) - deterministic_count
@@ -390,6 +410,7 @@ def main() -> None:
     )
     parser.add_argument("--model")
     parser.add_argument("--max-candidates", type=int, default=DEFAULT_MAX_CANDIDATES)
+    parser.add_argument("--llm-workers", type=int, default=DEFAULT_LLM_WORKERS)
     args = parser.parse_args()
 
     matched, exceptions = reconcile(
@@ -400,6 +421,7 @@ def main() -> None:
         provider=args.provider,
         model=args.model,
         max_candidates_per_erp=args.max_candidates,
+        llm_workers=args.llm_workers,
     )
     print(f"Matched pairs: {len(matched)}")
     print(f"Exceptions: {len(exceptions)}")
