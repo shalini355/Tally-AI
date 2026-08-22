@@ -1,4 +1,4 @@
-"""Streamlit dashboard for AI Finance Reconciliation Controller with full audit & benchmark metrics."""
+"""Streamlit dashboard for Tally AI reconciliation with full audit metrics."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ DATA_DIR = ROOT_DIR / "data"
 DATASET2_DIR = DATA_DIR / "dataset_2"
 
 st.set_page_config(
-    page_title="AI Finance Controller - Reconciliation Dashboard",
+    page_title="Tally AI - Reconciliation Dashboard",
     page_icon="💸",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -131,7 +131,7 @@ def _run_uploaded_reconciliation(erp_upload, bank_upload, provider: str, model: 
 
 
 # Main Header
-st.markdown('<div class="main-header">AI Finance Reconciliation Controller</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Tally AI</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-header">Multi-Source Verification • Deterministic & LLM Pipeline • Honest Exception Audit</div>',
     unsafe_allow_html=True,

@@ -1,12 +1,5 @@
-<<<<<<< HEAD
-# Tally-AI
+# Tally AI
 Tally is an autonomous AI finance controller that reconciles 60+ messy ERP and bank records . Built with a high-throughput two-stage pipeline (deterministic filter + calibrated LLM matching) and an honest, categorized exception engine . Created for the Razorpay AI Buildathon (Track 04)
-=======
-# 💸 Tally AI
-
-> **Autonomous AI agent that reconciles 60+ synthetic financial records across ERP ledgers and bank settlement logs — with measured accuracy, honest exception auditing, and anti-cherry-picking generalization proof.**
-
-Built for hackathon-grade rigor: not one blended accuracy number, but **per-category precision/recall/F1**, **throughput stage breakdown**, **categorized exception tagging**, and **confidence calibration** — all verified against two independently seeded datasets.
 
 ---
 
@@ -274,4 +267,3 @@ The 0.80 threshold isn't arbitrary. Bucketing LLM decisions by confidence and me
 ## 📜 License
 
 MIT License — built for educational and hackathon purposes.
->>>>>>> 78e4344 (Initial commit for Tally AI)
