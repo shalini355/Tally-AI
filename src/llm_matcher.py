@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import threading
 import time
 from enum import Enum
 
@@ -56,6 +58,33 @@ Use business logic, not just literal string equality:
 Return only the structured decision required by the response schema."""
 
 
+class ProviderRateLimiter:
+    """Serialize request starts for one provider with a minimum time interval."""
+
+    def __init__(self, interval_seconds: float = 2.0) -> None:
+        if interval_seconds < 0:
+            raise ValueError("interval_seconds must be non-negative")
+        self.interval_seconds = interval_seconds
+        self._lock = threading.Lock()
+        self._last_request_at = 0.0
+
+    def wait(self) -> None:
+        with self._lock:
+            now = time.monotonic()
+            delay = self.interval_seconds - (now - self._last_request_at)
+            if delay > 0:
+                time.sleep(delay)
+            self._last_request_at = time.monotonic()
+
+
+_provider_limiters = {
+    provider: ProviderRateLimiter(
+        float(os.getenv(f"{provider.upper()}_MIN_REQUEST_INTERVAL_SECONDS", "2"))
+    )
+    for provider in ("gemini", "groq", "mistral")
+}
+
+
 def _get_api_key(provider: str) -> str | None:
     """Read credentials from local environment variables or Streamlit secrets."""
     key_name = f"{provider.upper()}_API_KEY"
@@ -80,14 +109,16 @@ def _json_safe_row(row: Mapping[str, Any] | Any) -> dict[str, Any]:
 def _create_client(provider: str, model: str | None = None) -> Any:
     """Create an Instructor client lazily so importing this module makes no API call."""
     provider = provider.lower()
-    if provider in {"gemini", "groq"}:
+    if provider in {"gemini", "groq", "mistral"}:
         import instructor
         from openai import OpenAI
 
         if provider == "gemini":
             base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        else:
+        elif provider == "groq":
             base_url = "https://api.groq.com/openai/v1"
+        else:
+            base_url = "https://api.mistral.ai/v1"
         api_key = _get_api_key(provider)
         if not api_key:
             raise RuntimeError(f"{provider.upper()}_API_KEY is not set")
@@ -95,7 +126,7 @@ def _create_client(provider: str, model: str | None = None) -> Any:
             OpenAI(api_key=api_key, base_url=base_url),
             mode=instructor.Mode.JSON,
         )
-    raise ValueError("provider must be either 'gemini' or 'groq'")
+    raise ValueError("provider must be 'gemini', 'groq', or 'mistral'")
 
 
 def _is_rate_limit_error(error: Exception) -> bool:
@@ -116,14 +147,17 @@ def evaluate_potential_match(
 
     Pass an Instructor-compatible ``client`` in tests to avoid network calls. When no
     client is supplied, the selected provider key is read lazily from ``.env``.
-    Automatically falls back to the other configured provider after a provider
+    Automatically falls back to another configured provider after a provider
     failure, including rate limits, and retries with bounded exponential backoff.
     """
     default_models = {
         "gemini": "gemini-3.6-flash",
         "groq": "openai/gpt-oss-20b",
+        "mistral": "mistral-small-latest",
     }
     selected_provider = provider.lower()
+    if selected_provider not in default_models:
+        raise ValueError("provider must be 'gemini', 'groq', or 'mistral'")
     selected_model = model or default_models.get(selected_provider, "openai/gpt-oss-20b")
     erp_data = _json_safe_row(erp_row)
     bank_data = _json_safe_row(bank_row)
@@ -137,39 +171,52 @@ def evaluate_potential_match(
     if max_retries < 1:
         raise ValueError("max_retries must be at least 1")
 
-    max_attempts = max_retries
-    fallback_used = False
-    for attempt in range(1, max_attempts + 1):
-        try:
-            active_client = client if client is not None else _create_client(selected_provider, selected_model)
-            return active_client.chat.completions.create(
-                model=selected_model,
-                response_model=MatchDecision,
-                max_retries=max_retries,
-                temperature=0,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-        except Exception as exc:
-            fallback_provider = "gemini" if selected_provider == "groq" else "groq"
-            if client is None and not fallback_used and _get_api_key(fallback_provider):
-                selected_provider = fallback_provider
-                selected_model = model or default_models[selected_provider]
-                fallback_used = True
-                continue
-            if attempt < max_attempts:
-                time.sleep(min(8.0, 0.5 * (2 ** (attempt - 1))))
-                continue
-            if attempt == max_attempts:
+    fallback_order = {
+        "groq": ("mistral", "gemini"),
+        "gemini": ("mistral", "groq"),
+        "mistral": ("groq", "gemini"),
+    }
+    providers = [selected_provider]
+    if client is None:
+        providers.extend(
+            candidate
+            for candidate in fallback_order[selected_provider]
+            if _get_api_key(candidate)
+        )
+
+    last_error: Exception | None = None
+    for active_provider in providers:
+        active_model = model or default_models[active_provider]
+        for attempt in range(1, max_retries + 1):
+            try:
+                if client is None:
+                    _provider_limiters[active_provider].wait()
+                active_client = client if client is not None else _create_client(active_provider, active_model)
+                return active_client.chat.completions.create(
+                    model=active_model,
+                    response_model=MatchDecision,
+                    max_retries=max_retries,
+                    temperature=0,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
+            except Exception as exc:
+                last_error = exc
                 if _is_rate_limit_error(exc):
-                    raise RuntimeError(
-                        f"{selected_provider.upper()} rate limit reached. "
-                        "Add the other provider key in Streamlit Secrets, wait for the quota reset, "
-                        "or use a provider with available quota."
-                    ) from exc
-                raise exc
+                    break
+                if attempt < max_retries:
+                    backoff = min(8.0, 0.5 * (2 ** (attempt - 1)))
+                    time.sleep(backoff + random.uniform(0.0, backoff * 0.25))
+        if client is not None:
+            raise last_error  # type: ignore[misc]
+
+    if last_error is not None:
+        raise RuntimeError(
+            "All configured AI providers failed after bounded retries. "
+            "The candidate was not accepted and can be reviewed as an exception."
+        ) from last_error
     raise RuntimeError("Failed to evaluate potential match after retries")
 
 

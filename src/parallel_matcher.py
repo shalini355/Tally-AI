@@ -37,12 +37,20 @@ def _evaluate_one(
     provider: str,
     model: str | None,
 ) -> CandidateEvaluation:
-    decision = evaluator(
-        candidate.erp_row,
-        candidate.bank_row,
-        provider=provider,
-        model=model,
-    )
+    try:
+        decision = evaluator(
+            candidate.erp_row,
+            candidate.bank_row,
+            provider=provider,
+            model=model,
+        )
+    except Exception as error:
+        decision = MatchDecision(
+            is_match=False,
+            confidence_score=0.0,
+            match_type="no_match",
+            reasoning=f"AI provider unavailable after fallback: {str(error)[:180]}",
+        )
     return CandidateEvaluation(candidate=candidate, decision=decision)
 
 

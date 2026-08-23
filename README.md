@@ -23,9 +23,9 @@ Tally is an autonomous AI finance controller that reconciles 60+ messy ERP and b
 ┌─────────────────────────────────────────────────────────────┐
 │              LLM SEMANTIC MATCHER (Stage 2)                  │
 │  src/llm_matcher.py — Instructor + Pydantic structured       │
-│  output via Groq/Gemini. Candidate ranking heuristic         │
+│  output via Groq/Gemini/Mistral. Candidate ranking heuristic │
 │  filters implausible pairs before API calls.                 │
-│  Auto-fallback on 429 rate limits with exponential backoff.  │
+│  Auto-fallback on 429s with bounded retries and rate limiting.│
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
@@ -89,6 +89,8 @@ Create a `.env` file in the project root:
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
+MISTRAL_MIN_REQUEST_INTERVAL_SECONDS=2
 ```
 
 For Streamlit Community Cloud, add the same keys in **App settings → Secrets**:
@@ -96,13 +98,23 @@ For Streamlit Community Cloud, add the same keys in **App settings → Secrets**
 ```toml
 GEMINI_API_KEY = "your_gemini_api_key_here"
 GROQ_API_KEY = "your_groq_api_key_here"
+MISTRAL_API_KEY = "your_mistral_api_key_here"
+MISTRAL_MIN_REQUEST_INTERVAL_SECONDS = "2"
 ```
 
 Streamlit Cloud does not upload or read your local `.env` file.
 
-The dashboard defaults to Groq and automatically tries Gemini once if Groq returns
-a rate-limit response and `GEMINI_API_KEY` is configured. If both providers are
-exhausted, wait for the provider quota reset or use a higher-quota account.
+The dashboard defaults to Groq. On provider failure, the matcher tries every other
+configured provider in rotation: Groq → Mistral → Gemini, Gemini → Mistral → Groq,
+or Mistral → Groq → Gemini. Rate-limit responses switch providers immediately;
+other transient failures use bounded exponential backoff with jitter. Each provider
+also has a thread-safe minimum request interval, defaulting to two seconds, so the
+parallel worker pool does not create an uncontrolled request burst. If all providers
+are unavailable, the candidate is rejected and preserved in the exception audit.
+
+Mistral uses the OpenAI-compatible endpoint with the default model
+`mistral-small-latest`. Override a model from the dashboard or the `--model` CLI
+argument. Never commit real API keys; `.env` and `.env.*` are ignored by Git.
 
 ### 3. Generate Synthetic Data
 
@@ -115,7 +127,7 @@ Produces `data/erp_ledger.csv`, `data/bank_statement.csv`, and `data/.ground_tru
 ### 4. Run Reconciliation Pipeline
 
 ```bash
-.venv\Scripts\python.exe src\reconcile.py --provider groq
+.venv\Scripts\python.exe src\reconcile.py --provider mistral
 ```
 
 Outputs:
@@ -135,7 +147,7 @@ Reports per-category Precision/Recall/F1, throughput breakdown, exception catego
 ### 6. Run Generalization Test (Anti-Cherry-Picking)
 
 ```bash
-.venv\Scripts\python.exe src\generalization_test.py --provider groq
+.venv\Scripts\python.exe src\generalization_test.py --provider mistral
 ```
 
 Generates a **second dataset** with a different seed, runs the full pipeline, and prints a side-by-side comparison table.
@@ -227,10 +239,13 @@ Tally-AI/
 │   ├── generate_data.py            # Synthetic data generator (configurable seed/count)
 │   ├── deterministic_filter.py     # High-speed regex + exact amount first pass
 │   ├── llm_matcher.py              # Instructor/Pydantic LLM evaluator with rate-limit backoff
+│   ├── parallel_matcher.py         # Asyncio + bounded thread-pool candidate execution
 │   ├── reconcile.py                # Pipeline orchestrator with timing & exception categorization
 │   ├── evaluate_accuracy.py        # Per-category PRF1, throughput, calibration evaluation
 │   └── generalization_test.py      # Anti-cherry-picking second-dataset benchmark
 ├── backend/                        # FastAPI, Celery, S3, PostgreSQL service boundary
+├── src/api.py                      # FastAPI application entry point
+├── src/worker.py                   # Celery worker entry point
 ├── examples/streamlit_async_client.py # Non-blocking upload and status polling client
 ├── docker-compose.yml               # Local PostgreSQL and Redis services
 │

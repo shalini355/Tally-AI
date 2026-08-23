@@ -1,4 +1,5 @@
 import hashlib
+import json
 import random
 import tempfile
 import time
@@ -14,7 +15,7 @@ from src.reconcile import reconcile
 from .celery_app import celery_app
 from .config import get_settings
 from .db import SessionLocal
-from .models import FailedJob, JobStatus, ReconciliationJob, TransactionAudit
+from .models import FailedJob, JobStatus, ReconciliationJob, StageTiming, TransactionAudit
 from .storage import ObjectStorage
 
 
@@ -89,6 +90,11 @@ def reconcile_job(self, *, job_id: str, input_key: str, bank_key: str) -> dict:
             result_uri = storage.upload(report_path, result_key)
             exception_uri = storage.upload(exceptions_path, exception_key)
 
+            metrics_path = root / "reconciliation_metrics.json"
+            metrics = {}
+            if metrics_path.exists():
+                metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+
         result = {
             "matched_count": len(matched),
             "exception_count": len(exceptions),
@@ -97,6 +103,20 @@ def reconcile_job(self, *, job_id: str, input_key: str, bank_key: str) -> dict:
             "duration_ms": duration_ms,
         }
         with SessionLocal.begin() as session:
+            stage_durations = {
+                "deterministic": metrics.get("deterministic_time_seconds", 0.0),
+                "llm": metrics.get("llm_time_seconds", 0.0),
+                "pipeline": metrics.get("total_time_seconds", duration_ms / 1000),
+            }
+            for stage, seconds in stage_durations.items():
+                session.add(
+                    StageTiming(
+                        job_id=UUID(job_id),
+                        stage=stage,
+                        duration_ms=int(float(seconds) * 1000),
+                        stage_metadata={"llm_calls": metrics.get("llm_calls_made", 0)},
+                    )
+                )
             for row in matched.to_dict("records"):
                 transaction_hash = hashlib.sha256(
                     f"{row['erp_id']}:{row['bank_ref']}".encode("utf-8")
@@ -112,6 +132,23 @@ def reconcile_job(self, *, job_id: str, input_key: str, bank_key: str) -> dict:
                             "reasoning": row.get("reasoning"),
                         },
                         duration_ms=duration_ms,
+                    )
+                )
+            for row in exceptions.to_dict("records"):
+                transaction_hash = hashlib.sha256(
+                    f"{row['dataset']}:{row['record_id']}".encode("utf-8")
+                ).hexdigest()
+                session.add(
+                    TransactionAudit(
+                        job_id=UUID(job_id),
+                        transaction_hash=transaction_hash,
+                        stage="exception",
+                        decision={
+                            "category": row.get("category"),
+                            "confidence_score": row.get("confidence_score"),
+                            "reason": row.get("reason"),
+                        },
+                        duration_ms=0,
                     )
                 )
             session.execute(

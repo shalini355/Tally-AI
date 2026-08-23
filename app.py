@@ -151,7 +151,7 @@ with st.sidebar:
     st.subheader("🚀 Live Reconciliation Run")
     erp_upload = st.file_uploader("Upload ERP Ledger (CSV)", type="csv", key="erp_upload")
     bank_upload = st.file_uploader("Upload Bank Statement (CSV)", type="csv", key="bank_upload")
-    provider = st.selectbox("LLM Provider", ["groq", "gemini"], index=0)
+    provider = st.selectbox("LLM Provider", ["groq", "gemini", "mistral"], index=0)
     model = st.text_input("Model Override", placeholder="Default provider model")
 
     run_live = st.button(

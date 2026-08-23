@@ -58,3 +58,15 @@ class TransactionAudit(Base):
     cost_usd: Mapped[float] = mapped_column(Numeric(12, 6), default=0, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StageTiming(Base):
+    __tablename__ = "stage_timings"
+    __table_args__ = (UniqueConstraint("job_id", "stage"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("reconciliation_jobs.id"), nullable=False)
+    stage: Mapped[str] = mapped_column(String(64), nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    stage_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

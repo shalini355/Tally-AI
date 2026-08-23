@@ -66,7 +66,7 @@ def create_job_from_keys(payload: JobKeys, db: Session = Depends(get_db)) -> dic
     task = reconcile_job.apply_async(kwargs={"job_id": str(job_id), "input_key": payload.erp_key, "bank_key": payload.bank_key})
     job.celery_task_id = task.id
     db.commit()
-    return {"task_id": str(job_id), "job_id": str(job_id), "status": JobStatus.PENDING.value}
+    return {"task_id": task.id, "job_id": str(job_id), "status": JobStatus.PENDING.value}
 
 
 @app.post("/v1/reconciliation-jobs", status_code=status.HTTP_202_ACCEPTED)
