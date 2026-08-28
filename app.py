@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -129,6 +130,11 @@ def _run_uploaded_reconciliation(erp_upload, bank_upload, provider: str, model: 
         st.session_state["uploaded_summary"] = data["summary"]
         st.session_state["uploaded_throughput"] = throughput
         st.session_state["uploaded_total"] = len(pd.read_csv(erp_path))
+        st.session_state["uploaded_erp_rows"] = len(pd.read_csv(erp_path))
+        st.session_state["uploaded_bank_rows"] = len(pd.read_csv(bank_path))
+        st.session_state["uploaded_erp_name"] = erp_upload.name
+        st.session_state["uploaded_bank_name"] = bank_upload.name
+        st.session_state["uploaded_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 # Main Header
@@ -170,13 +176,20 @@ with st.sidebar:
             st.error(f"Reconciliation failed: {error}")
 
 # Determine active dataset to display
-if dataset_choice == "Live Upload / Test" and "uploaded_matched" in st.session_state:
+is_live_upload = dataset_choice == "Live Upload / Test"
+if is_live_upload and "uploaded_matched" in st.session_state:
     matched_df = st.session_state["uploaded_matched"]
     exceptions_df = st.session_state["uploaded_exceptions"]
     metrics_data = st.session_state.get("uploaded_metrics", {})
     summary_data = st.session_state.get("uploaded_summary", {})
     total_records = st.session_state.get("uploaded_total", len(matched_df))
     active_dataset_label = "Live Upload"
+elif is_live_upload:
+    st.info(
+        'Please upload both ERP Ledger and Bank Statement CSV files, then click '
+        '"Run Reconciliation Pipeline" to view live results.'
+    )
+    st.stop()
 elif dataset_choice == "Generalization Dataset 2":
     ds_data = _load_dataset_files(DATASET2_DIR)
     matched_df = ds_data["matched"]
@@ -193,6 +206,16 @@ else:
     summary_data = ds_data["summary"]
     total_records = ds_data["total_records"]
     active_dataset_label = "Primary Dataset 1 (Seed 20260822)"
+
+# Show upload provenance before live reconciliation metrics.
+if is_live_upload:
+    st.subheader("Uploaded Dataset Summary")
+    upload_cols = st.columns(4)
+    upload_cols[0].metric("ERP Rows", st.session_state["uploaded_erp_rows"])
+    upload_cols[1].metric("Bank Rows", st.session_state["uploaded_bank_rows"])
+    upload_cols[2].metric("ERP File", st.session_state["uploaded_erp_name"])
+    upload_cols[3].metric("Bank File", st.session_state["uploaded_bank_name"])
+    st.caption(f"Uploaded at {st.session_state['uploaded_at']}")
 
 # Top Level Key Metrics
 match_count = len(matched_df)
